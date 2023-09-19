@@ -1,0 +1,30 @@
+version: "3"
+
+services:
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+
+  rabbitmq:
+    image: rabbitmq:management
+    ports:
+      - "5672:5672" # для приложения
+      - "15672:15672" # для веб-интерфейса
+    depends_on:
+      - redis
+
+  consumer-service:
+    build: ./consumer-service # путь до Dockerfile второго сервиса
+    depends_on:
+      - rabbitmq
+    environment:
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - REDIS_URL=redis://redis:6379
+
+  backend-service:
+    build: ./backend-service # путь до Dockerfile первого сервиса
+    depends_on:
+      - consumer-service
+    environment:
+      - RABBITMQ_URL=amqp://rabbitmq:5672
