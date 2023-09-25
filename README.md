@@ -37,5 +37,9 @@ Redis -> RabbitMQ -> consumer-service -> api-service
 ## Инструкция по использованию
 
 ```bash
-$ npm run start
+$ docker-compose up -d
+```
+
+```bash
+$ docker-compose down
 ```
