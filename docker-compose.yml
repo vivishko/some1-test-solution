@@ -3,28 +3,49 @@ version: "3"
 services:
   redis:
     image: redis:latest
+    restart: always
     ports:
       - "6379:6379"
+    env_file:
+      - .env
+    command: redis-server --save 20 1 --loglevel warning --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - ./redis/data:/data
 
   rabbitmq:
     image: rabbitmq:management
+    hostname: rabbitmq # зафиксирует имя сервера
+    restart: always # автоматическая перезагрузка в случае внезапной остановки сервиса
     ports:
       - "5672:5672" # для приложения
       - "15672:15672" # для веб-интерфейса
+    environment:
+      # переменные для авторизации не под guest/guest
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+      # переменная для минимального свободного места на диске,
+      # при опускании планки которой rabbitmq перестанет писать в стейт
+      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit disk_free_limit 2147483648
+      # переменная для записи логов в журнал
+      - RABBITMQ_LOGS=/var/log/rabbitmq/rabbit.log
+    volumes:
+      # для сохранения стейта RabbitMQ локально на диск
+      - ./rabbitmq/data:/var/lib/rabbitmq
+      - ./rabbitmq/logs:/var/log/rabbitmq
     depends_on:
       - redis
 
-  consumer-service:
-    build: ./consumer-service # путь до Dockerfile второго сервиса
-    depends_on:
-      - rabbitmq
-    environment:
-      - RABBITMQ_URL=amqp://rabbitmq:5672
-      - REDIS_URL=redis://redis:6379
+  # consumer-service:
+  #   build: ./consumer-service # путь до Dockerfile второго сервиса
+  #   depends_on:
+  #     - rabbitmq
+  #   environment:
+  #     - RABBITMQ_URL=amqp://rabbitmq:5672
+  #     - REDIS_URL=redis://redis:6379
 
-  backend-service:
-    build: ./backend-service # путь до Dockerfile первого сервиса
-    depends_on:
-      - consumer-service
-    environment:
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+  # backend-service:
+  #   build: ./backend-service # путь до Dockerfile первого сервиса
+  #   depends_on:
+  #     - consumer-service
+  #   environment:
+  #     - RABBITMQ_URL=amqp://rabbitmq:5672
